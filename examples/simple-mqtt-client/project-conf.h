@@ -1,0 +1,3 @@
+#define UIP_CONF_TCP 1 // Enable TCP
+
+#define MQTT_CLIENT_CONF_LOG_LEVEL LOG_LEVEL_INFO
