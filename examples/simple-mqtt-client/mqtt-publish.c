@@ -25,6 +25,7 @@
 /*---------------------------------------------------------------------------*/
 /* Various states */
 static uint8_t state;
+#define STATE_INIT 0
 #define STATE_WAITING_CONNECTIVITY 1
 #define STATE_WAITING_CONNECTION 2
 #define STATE_CONNECTED 3
@@ -114,21 +115,24 @@ PROCESS_THREAD(mqtt_client_process, ev, data) {
   etimer_set(&periodic_timer, 0);
 
   construct_client_id();
-  mqtt_register(&conn, &mqtt_client_process, client_id, mqtt_event,
-                MAX_TCP_SEGMENT_SIZE);
-  state = STATE_WAITING_CONNECTIVITY;
-  LOG_DBG("Init MQTT version %d\n", MQTT_PROTOCOL_VERSION);
+  state = STATE_INIT;
 
   while (1) {
     PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_TIMER && data == &periodic_timer);
 
     switch (state) {
+    case STATE_INIT: /* Initialize the MQTT connection */
+      mqtt_register(&conn, &mqtt_client_process, client_id, mqtt_event, MAX_TCP_SEGMENT_SIZE);
+      LOG_DBG("Init MQTT version %d\n", MQTT_PROTOCOL_VERSION);
+      state = STATE_WAITING_CONNECTIVITY;
+      etimer_set(&periodic_timer, WAITING_INTERVAL);
+      break;
     case STATE_WAITING_CONNECTIVITY: /* Waiting for a global address */
       if (uip_ds6_get_global(ADDR_PREFERRED) != NULL) {
         LOG_INFO("Device got a IPv6 address ");
         LOG_INFO_6ADDR(&uip_ds6_get_global(ADDR_PREFERRED)->ipaddr);
         LOG_INFO_("\n");
-        LOG_DBG("Device is registered, connecting\n");
+        LOG_DBG("Device is registered, connecting...\n");
         mqtt_connect(&conn, MQTT_BROKER_IP_ADDR, MQTT_BROKER_PORT,
                      (DEFAULT_PUBLISH_INTERVAL * 3) / CLOCK_SECOND, MQTT_CLEAN_SESSION_ON);
 
@@ -141,7 +145,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data) {
       etimer_set(&periodic_timer, WAITING_INTERVAL);
       break;
     case STATE_WAITING_CONNECTION: /* Waiting for the broker to ack our connect */
-      LOG_DBG("Waiting for connection\n");
+      LOG_DBG("Waiting for connection...\n");
       leds_on(MQTT_CONNECTING_LED);
       ctimer_set(&ct, WAITING_INTERVAL >> 1, status_led_off, NULL);
       etimer_set(&periodic_timer, WAITING_INTERVAL);
@@ -166,6 +170,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data) {
     case STATE_DISCONNECTED: /* Disconnected */
       leds_on(MQTT_ERROR_LED);
       ctimer_set(&ct, WAITING_INTERVAL >> 1, status_led_off, NULL);
+      state = STATE_INIT; /* Reconnect */
       etimer_set(&periodic_timer, WAITING_INTERVAL);
       break;
     default: /* should never happen */
