@@ -182,7 +182,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data) {
       if (mqtt_ready(&conn) && conn.out_buffer_sent) {
         leds_on(MQTT_PUBLISHING_LED);
         ctimer_set(&ct, WAITING_INTERVAL, status_led_off, NULL);
-        LOG_DBG("Connected\n");
+        LOG_DBG("Connected !\n");
         state = STATE_SUBSCRIBING;
         etimer_set(&periodic_timer, WAITING_INTERVAL);
       } else {

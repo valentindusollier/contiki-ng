@@ -29,6 +29,7 @@ static uint8_t state;
 #define STATE_WAITING_CONNECTIVITY 1
 #define STATE_WAITING_CONNECTION 2
 #define STATE_CONNECTED 3
+#define STATE_PUBLISHING 20
 #define STATE_DISCONNECTED 4
 /*---------------------------------------------------------------------------*/
 /* Default configuration values */
@@ -154,9 +155,8 @@ PROCESS_THREAD(mqtt_client_process, ev, data) {
       if (mqtt_ready(&conn) && conn.out_buffer_sent) {
         leds_on(MQTT_PUBLISHING_LED);
         ctimer_set(&ct, WAITING_INTERVAL, status_led_off, NULL);
-        LOG_DBG("Publishing\n");
-        publish("/this/is/a/test/topic", "Hello World");
-        etimer_set(&periodic_timer, DEFAULT_PUBLISH_INTERVAL);
+        LOG_DBG("Connected !\n");
+        state = STATE_PUBLISHING;
       } else {
         /*
          * Our publish timer fired, but some MQTT packet is already in flight
@@ -164,8 +164,15 @@ PROCESS_THREAD(mqtt_client_process, ev, data) {
          */
         LOG_DBG("Publishing... (MQTT state=%d, q=%u)\n", conn.state,
                 conn.out_queue_full);
-        etimer_set(&periodic_timer, WAITING_INTERVAL);
       }
+      etimer_set(&periodic_timer, WAITING_INTERVAL);
+      break;
+    case STATE_PUBLISHING: /* Publishing */
+      leds_on(MQTT_PUBLISHING_LED);
+      ctimer_set(&ct, WAITING_INTERVAL, status_led_off, NULL);
+      LOG_DBG("Publishing\n");
+      publish("/this/is/a/test/topic", "Hello World");
+      etimer_set(&periodic_timer, DEFAULT_PUBLISH_INTERVAL);
       break;
     case STATE_DISCONNECTED: /* Disconnected */
       leds_on(MQTT_ERROR_LED);
