@@ -31,8 +31,6 @@ static uint8_t state;
 #define STATE_DISCONNECTED 4
 /*---------------------------------------------------------------------------*/
 /* Default configuration values */
-#define MQTT_BROKER_IP_ADDR "fd00::1"
-#define MQTT_BROKER_PORT 1883
 #define WAITING_INTERVAL CLOCK_SECOND
 #define DEFAULT_PUBLISH_INTERVAL (30 * CLOCK_SECOND)
 /*---------------------------------------------------------------------------*/
