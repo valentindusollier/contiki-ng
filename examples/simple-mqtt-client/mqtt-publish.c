@@ -151,7 +151,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data) {
         leds_on(MQTT_PUBLISHING_LED);
         ctimer_set(&ct, WAITING_INTERVAL, status_led_off, NULL);
         LOG_DBG("Publishing\n");
-        publish("/this/is/test/topic", "Hello World");
+        publish("/this/is/a/test/topic", "Hello World");
         etimer_set(&periodic_timer, DEFAULT_PUBLISH_INTERVAL);
       } else {
         /*
