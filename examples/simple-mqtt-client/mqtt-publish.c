@@ -85,6 +85,11 @@ static void mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data
     break;
   }
   case MQTT_EVENT_DISCONNECTED:
+  {
+    LOG_ERR("MQTT Disconnect. Reason %u\n", *((mqtt_event_t *)data));
+    state = STATE_DISCONNECTED;
+    break;
+  }
   case MQTT_EVENT_CONNECTION_REFUSED_ERROR:
   {
     LOG_ERR("MQTT Disconnect. Reason %u (CONNECTION_REFUSED)\n", *((mqtt_event_t *)data));
