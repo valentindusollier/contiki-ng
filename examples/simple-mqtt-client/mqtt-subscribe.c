@@ -54,8 +54,7 @@ static struct mqtt_connection conn;
 #define CLIENT_ID_SIZE 25
 char client_id[CLIENT_ID_SIZE];
 /*---------------------------------------------------------------------------*/
-/* Topics to subscribe to as a list of string ["/test/topic/", "/topic2", "/topic3/led"] */
-static char *topics[] = {"/test/topic/", "/topic2", "/topic3/led"};
+static char *topics[] = {"/this/is/a/test/topic/", "/this/is/another/topic", "/this/is/a/third/topic"};
 static int n_topics = 3;
 static int first_unsubscribed_topic;
 /*---------------------------------------------------------------------------*/
