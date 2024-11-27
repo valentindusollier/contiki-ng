@@ -1,6 +1,8 @@
 #define UIP_CONF_TCP 1 // Enable TCP
 
-#define MQTT_BROKER_IP_ADDR "fd01::2"
+#define MQTT_BROKER_IP_ADDR "fd00::2"
 #define MQTT_BROKER_PORT 1883
+
+#define BULB_MAC_ADDR "00aabbccddeeff11"
 
 #define MQTT_CLIENT_CONF_LOG_LEVEL LOG_LEVEL_INFO
