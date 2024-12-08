@@ -196,8 +196,7 @@ static int subscribe(char *topic)
  * in WAITING_INTERVAL seconds or DEFAULT_PUBLISH_INTERVAL seconds based on the state.
  *
  */
-PROCESS_THREAD(mqtt_client_process, ev, data)
-{
+PROCESS_THREAD(mqtt_client_process, ev, data) {
 
   PROCESS_BEGIN();
 
@@ -206,12 +205,10 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
   construct_client_id();
   state = STATE_INIT;
 
-  while (1)
-  {
+  while (1) {
     PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_TIMER && data == &periodic_timer);
 
-    switch (state)
-    {
+    switch (state) {
     case STATE_INIT: /* Initialize the MQTT connection */
       mqtt_register(&conn, &mqtt_client_process, client_id, mqtt_event, MAX_TCP_SEGMENT_SIZE);
       first_unsubscribed_topic = 0;
@@ -220,8 +217,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
       etimer_set(&periodic_timer, WAITING_INTERVAL);
       break;
     case STATE_WAITING_CONNECTIVITY: /* Waiting for a global address */
-      if (uip_ds6_get_global(ADDR_PREFERRED) != NULL)
-      {
+      if (uip_ds6_get_global(ADDR_PREFERRED) != NULL) {
         LOG_INFO("Device got a IPv6 address ");
         LOG_INFO_6ADDR(&uip_ds6_get_global(ADDR_PREFERRED)->ipaddr);
         LOG_INFO_("\n");
@@ -230,9 +226,7 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
                      (DEFAULT_SUBSCRIBED_INTERVAL * 3) / CLOCK_SECOND, MQTT_CLEAN_SESSION_ON);
 
         state = STATE_WAITING_CONNECTION;
-      }
-      else
-      {
+      } else {
         LOG_DBG("No connectivity yet, waiting...\n");
         leds_on(MQTT_WAITING_FOR_NET_LED);
         ctimer_set(&ct, WAITING_INTERVAL >> 1, status_led_off, NULL);
@@ -246,24 +240,20 @@ PROCESS_THREAD(mqtt_client_process, ev, data)
       etimer_set(&periodic_timer, WAITING_INTERVAL);
       break;
     case STATE_CONNECTED: /* Connected, try to subscribe */
-      if (mqtt_ready(&conn) && conn.out_buffer_sent)
-      {
+      if (mqtt_ready(&conn) && conn.out_buffer_sent) {
         leds_on(MQTT_PUBLISHING_LED);
         ctimer_set(&ct, WAITING_INTERVAL, status_led_off, NULL);
         LOG_DBG("Connected !\n");
         state = STATE_SUBSCRIBING;
         etimer_set(&periodic_timer, WAITING_INTERVAL);
-      }
-      else
-      {
+      } else {
         LOG_DBG("Broker not ready yet... (MQTT state=%d, q=%u)\n", conn.state,
                 conn.out_queue_full);
         etimer_set(&periodic_timer, WAITING_INTERVAL);
       }
       break;
     case STATE_SUBSCRIBING: /* Subscribing to topics */
-      if (subscribe(topics[first_unsubscribed_topic]) && ++first_unsubscribed_topic == n_topics)
-      {
+      if (subscribe(topics[first_unsubscribed_topic]) && ++first_unsubscribed_topic == n_topics) {
         state = STATE_SUBSCRIBED;
       }
       etimer_set(&periodic_timer, SUBSCRIBING_INTERVAL);
