@@ -16,6 +16,7 @@
 #include <strings.h>
 #include <stdarg.h>
 /*---------------------------------------------------------------------------*/
+/* Logging module and level configuration */
 #define LOG_MODULE "MQTT"
 #ifdef MQTT_CLIENT_CONF_LOG_LEVEL
 #define LOG_LEVEL MQTT_CLIENT_CONF_LOG_LEVEL
@@ -23,7 +24,7 @@
 #define LOG_LEVEL LOG_LEVEL_INFO
 #endif
 /*---------------------------------------------------------------------------*/
-/* Various states */
+/* Various MQTT client states */
 static uint8_t state;
 #define STATE_INIT 0
 #define STATE_WAITING_CONNECTIVITY 1
@@ -32,10 +33,11 @@ static uint8_t state;
 #define STATE_PUBLISHING 20
 #define STATE_DISCONNECTED 4
 /*---------------------------------------------------------------------------*/
-/* Default configuration values */
+/* Timing configurations */
 #define WAITING_INTERVAL CLOCK_SECOND
 #define DEFAULT_PUBLISH_INTERVAL (30 * CLOCK_SECOND)
 /*---------------------------------------------------------------------------*/
+/* LED configurations for various states */
 #define MQTT_WAITING_FOR_NET_LED LEDS_BLUE
 #define MQTT_CONNECTING_LED LEDS_BLUE
 #define MQTT_PUBLISHING_LED LEDS_GREEN
@@ -47,13 +49,12 @@ AUTOSTART_PROCESSES(&mqtt_client_process);
 /* Maximum TCP segment size for outgoing segments of our socket */
 #define MAX_TCP_SEGMENT_SIZE 32
 /*---------------------------------------------------------------------------*/
-/*
- * The main MQTT buffers.
- */
+/* The main MQTT buffers */
 #define APP_BUFFER_SIZE 512
 static struct mqtt_connection conn;
 static char app_buffer[APP_BUFFER_SIZE];
 /*---------------------------------------------------------------------------*/
+/* MQTT client ID */
 #define CLIENT_ID_SIZE 25
 char client_id[CLIENT_ID_SIZE];
 /*---------------------------------------------------------------------------*/
@@ -62,10 +63,18 @@ static struct ctimer ct;
 /*---------------------------------------------------------------------------*/
 PROCESS(mqtt_client_process, "MQTT Client");
 /*---------------------------------------------------------------------------*/
+/**
+ * Turns off all LEDs.
+ * This is used as a callback function for the ctimer.
+ */
 static void status_led_off(void *d) {
   leds_off(LEDS_ALL);
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * Constructs a unique MQTT client ID based on the device's MAC address.
+ * The client ID is stored in the `client_id` global variable.
+ */
 static void construct_client_id() {
   uint8_t mac_address[8];
   linkaddr_copy((linkaddr_t *)mac_address, &linkaddr_node_addr);
@@ -74,6 +83,15 @@ static void construct_client_id() {
            mac_address[4], mac_address[5], mac_address[6], mac_address[7]);
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * MQTT Event Handler.
+ * Handles various MQTT events like connection, disconnection, and publishing acknowledgments.
+ * This function is called as a callback from the MQTT library when an event occurs.
+ * 
+ * @param m      MQTT connection instance.
+ * @param event  The type of MQTT event.
+ * @param data   Additional event-specific data.
+ */
 static void mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data) {
   switch (event)
   {
@@ -107,6 +125,12 @@ static void mqtt_event(struct mqtt_connection *m, mqtt_event_t event, void *data
   }
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * Publishes data to a specified MQTT topic.
+ * 
+ * @param topic The MQTT topic to publish to.
+ * @param data  The data to publish.
+ */
 static void publish(char *topic, char *data) {
   snprintf(app_buffer, APP_BUFFER_SIZE, "%s", data);
   mqtt_publish(&conn, NULL, topic, (uint8_t *)app_buffer,
@@ -114,6 +138,23 @@ static void publish(char *topic, char *data) {
   LOG_INFO("Publish on topic \"%s\"\n", topic);
 }
 /*---------------------------------------------------------------------------*/
+/**
+ * Process of the MQTT client.
+ * Handles the lifecycle of the MQTT client, including initialization, connection, and publishing.
+ * 
+ * The usual workflow is:
+ *  - STATE_INIT: Initialize the MQTT connection.
+ *  - STATE_WAITING_CONNECTIVITY: Wait for a global IPv6 address.
+ *  - STATE_WAITING_CONNECTION: Wait for the broker to acknowledge the connection.
+ *  - STATE_CONNECTED: Check if the MQTT connection is ready to publish.
+ *  - STATE_PUBLISHING: Publish data to the broker. Once this state is attained, it loops in it.
+ * 
+ *  - STATE_DISCONNECTED: If the MQTT connection is lost, it goes back to STATE_INIT to reconnect.
+ * 
+ * Once each state is processed, the process yields control back to the system and program the timer to fire
+ * in WAITING_INTERVAL seconds or DEFAULT_PUBLISH_INTERVAL seconds based on the state.
+ * 
+ */
 PROCESS_THREAD(mqtt_client_process, ev, data) {
 
   PROCESS_BEGIN();
